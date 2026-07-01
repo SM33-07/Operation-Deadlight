@@ -8,9 +8,9 @@ import { DialogueBox } from '@/components/DialogueBox'
 import { MessageReconstruction } from '@/components/MessageReconstruction'
 import { TimelineDecoder } from '@/components/TimelineDecoder'
 import { NarrativeGate } from '@/components/NarrativeGate'
-import { PuzzleInput } from '@/components/case-07/shared/PuzzleInput'
+import { PuzzleInput } from '@/components/shared/PuzzleInput'
 import { useActProgress } from '@/hooks/useActProgress'
-import styles from '../operation-deadlight.module.css'
+import styles from '@/app/operation-deadlight.module.css'
 
 export function Act8FinalTransmission({ onPuzzleSolved }: { onPuzzleSolved: () => void }) {
   const sectionRef = useRef<HTMLElement>(null)

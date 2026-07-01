@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import styles from '../operation-deadlight.module.css'
+import styles from '@/app/operation-deadlight.module.css'
 
 interface DialogueBoxProps {
   speaker: string

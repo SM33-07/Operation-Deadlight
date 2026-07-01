@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { PageCurl } from '@/components/case-07/puzzle/PageCurl'
+import { PageCurl } from '@/components/puzzle/PageCurl'
 
 interface PuzzleInputProps {
   puzzleId: string

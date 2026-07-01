@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { sounds } from '@/utils/SoundEffects'
-import styles from '../operation-deadlight.module.css'
+import styles from '@/app/operation-deadlight.module.css'
 
 type SubPuzzle = 'registry' | 'polyhedron' | 'splicer'
 

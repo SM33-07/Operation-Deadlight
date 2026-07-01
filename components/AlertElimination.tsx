@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import gsap from 'gsap'
-import styles from '../operation-deadlight.module.css'
+import styles from '@/app/operation-deadlight.module.css'
 
 interface Alert {
   id: string

@@ -7,7 +7,7 @@ import { ActCinematicIntro } from '@/components/ActCinematicIntro'
 import { DialogueBox } from '@/components/DialogueBox'
 import { TransmissionRegistration } from '@/components/TransmissionRegistration'
 import { RecoveryKeyModal } from '@/components/RecoveryKeyModal'
-import styles from '../operation-deadlight.module.css'
+import styles from '@/app/operation-deadlight.module.css'
 
 type Phase = 'form' | 'processing' | 'detected' | 'tracing' | 'breached' | 'awaiting'
 

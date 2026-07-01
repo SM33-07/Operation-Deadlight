@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Cinzel, Lora, Geist_Mono } from 'next/font/google'
-import { ScrollProvider } from '@/components/case-07/ScrollProvider'
+import { ScrollProvider } from '@/components/ScrollProvider'
 
 const cinzel = Cinzel({ variable: '--font-cinzel', subsets: ['latin'] })
 const lora = Lora({ variable: '--font-body', subsets: ['latin'] })

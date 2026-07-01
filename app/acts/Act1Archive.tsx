@@ -5,7 +5,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { DialogueBox } from '@/components/DialogueBox'
 import { CaseDossier } from '@/components/CaseDossier'
-import styles from '../operation-deadlight.module.css'
+import styles from '@/app/operation-deadlight.module.css'
 
 export function Act1Archive() {
   const sectionRef = useRef<HTMLElement>(null)

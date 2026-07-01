@@ -8,8 +8,8 @@ import { DialogueBox } from '@/components/DialogueBox'
 import { SymbolReconstruction } from '@/components/SymbolReconstruction'
 import { FragmentUnlock, Fragment } from '@/components/FragmentUnlock'
 import { NarrativeGate } from '@/components/NarrativeGate'
-import { PuzzleInput } from '@/components/case-07/shared/PuzzleInput'
-import styles from '../operation-deadlight.module.css'
+import { PuzzleInput } from '@/components/shared/PuzzleInput'
+import styles from '@/app/operation-deadlight.module.css'
 
 const SYMBOL_FRAGMENTS: Fragment[] = [
   {

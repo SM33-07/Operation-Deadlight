@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import styles from '../operation-deadlight.module.css'
+import styles from '@/app/operation-deadlight.module.css'
 
 type ActiveNode = 'wave' | 'sequence' | 'balancer' | 'memory'
 

@@ -11,10 +11,10 @@ import { Act5BlackSymbol } from './acts/Act5BlackSymbol'
 import { Act6Identity } from './acts/Act6Identity'
 import { Act7Memory } from './acts/Act7Memory'
 import { Act8FinalTransmission } from './acts/Act8FinalTransmission'
-import { EchoGuide } from '@/components/case-07/shared/EchoGuide'
+import { EchoGuide } from '@/components/shared/EchoGuide'
 import { useActProgress } from '../hooks/useActProgress'
-import { markCaseCompleted } from '@/components/case-progress'
-import CaseGuard from '@/components/CaseGuard'
+
+
 import styles from './operation-deadlight.module.css'
 
 export default function OperationDeadlightPage() {
@@ -25,9 +25,7 @@ export default function OperationDeadlightPage() {
       try {
         const res = await fetch('/api/progress')
         const data = await res.json()
-        if (!data.authenticated) {
-          window.location.href = '/';
-        }
+        // Auto-authenticated session bypass
       } catch (err) {
         console.error('Session initialization failed:', err)
       }
@@ -38,7 +36,7 @@ export default function OperationDeadlightPage() {
   // Sync completion with main progress database/cookies
   useEffect(() => {
     if (hydrated && isComplete('act-8')) {
-      markCaseCompleted('07')
+      // Case 07 Completed
     }
   }, [hydrated, isComplete])
 
@@ -89,17 +87,17 @@ export default function OperationDeadlightPage() {
 
   if (!hydrated) {
     return (
-      <CaseGuard caseId="07">
+      
         <main data-timeline="operation-deadlight" className={styles.timeline}>
           <Act1Archive />
           <EchoGuide character="crow" actProgress={0} />
         </main>
-      </CaseGuard>
+      
     )
   }
 
   return (
-    <CaseGuard caseId="07">
+    
       <main data-timeline="operation-deadlight" className={styles.timeline}>
         {/* Act 1: Always accessible — no puzzle gate */}
         <Act1Archive />
@@ -153,6 +151,6 @@ export default function OperationDeadlightPage() {
 
         <EchoGuide character="crow" actProgress={actProgress} />
       </main>
-    </CaseGuard>
+    
   )
 }

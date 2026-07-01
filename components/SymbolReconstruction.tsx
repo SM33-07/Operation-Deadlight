@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import gsap from 'gsap'
-import styles from '../operation-deadlight.module.css'
+import styles from '@/app/operation-deadlight.module.css'
 
 // Binary grid puzzle data - correct parity pattern
 const BINARY_GRID = [

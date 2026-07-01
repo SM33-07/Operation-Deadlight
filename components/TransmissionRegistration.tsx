@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import styles from '../operation-deadlight.module.css'
+import styles from '@/app/operation-deadlight.module.css'
 
 interface TransmissionRegistrationProps {
   onSuccess: (name: string, email: string, sector: string) => void

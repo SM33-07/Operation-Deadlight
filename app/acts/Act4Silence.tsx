@@ -8,7 +8,7 @@ import { DialogueBox } from '@/components/DialogueBox'
 import { AlertElimination } from '@/components/AlertElimination'
 import { SignalInterceptor } from '@/components/SignalInterceptor'
 import { sounds } from '@/utils/SoundEffects'
-import styles from '../operation-deadlight.module.css'
+import styles from '@/app/operation-deadlight.module.css'
 
 interface Act4Props {
   onPuzzleSolved: () => void
