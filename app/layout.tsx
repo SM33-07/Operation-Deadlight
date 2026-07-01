@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Cinzel, Lora, Geist_Mono } from 'next/font/google'
 import { ScrollProvider } from '@/components/ScrollProvider'
+import './globals.css'
 
 const cinzel = Cinzel({ variable: '--font-cinzel', subsets: ['latin'] })
 const lora = Lora({ variable: '--font-body', subsets: ['latin'] })
@@ -15,11 +16,14 @@ export const metadata: Metadata = {
 
 export default function CaseFileLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className={`${cinzel.variable} ${lora.variable} ${geistMono.variable} min-h-full bg-black text-[#f4ece1] antialiased`}>
-      <div className="aetherion-grain" />
-      <div className="aetherion-scanlines" />
-      <ScrollProvider>{children}</ScrollProvider>
-    </div>
+    <html lang="en" className="h-full antialiased m-0 p-0">
+      <body className="min-h-full m-0 p-0 bg-black text-[#f4ece1] overflow-x-hidden">
+        <div className={`${cinzel.variable} ${lora.variable} ${geistMono.variable} min-h-full bg-black relative overflow-x-hidden`}>
+          <div className="aetherion-grain" />
+          <div className="aetherion-scanlines" />
+          <ScrollProvider>{children}</ScrollProvider>
+        </div>
+      </body>
+    </html>
   )
 }
-
