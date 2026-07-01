@@ -1,108 +1,134 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/app/hunt/case-07/lib/session'
-import { db, isDbAvailable } from '@/db'
-import { userProgress } from '@/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { getSession, saveDemoState } from '@/lib/session'
+import { isDbAvailable, db } from '@/db'
+import { timelineProgress, leaderboard } from '@/db/schema'
+import { eq, desc, asc } from 'drizzle-orm'
+import { timelines } from '@/lib/timelines'
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const caseId = searchParams.get('caseId')
-
-  if (!caseId) {
-    return NextResponse.json({ success: false, error: 'caseId parameter required' }, { status: 400 })
-  }
-
-  const session = await getSession()
-  if (!session?.userId) {
-    return NextResponse.json({ success: true, progress: {} })
-  }
-
-  if (!isDbAvailable) {
-    return NextResponse.json({ success: true, progress: {} })
-  }
-
+export async function GET() {
   try {
-    const rows = await db
-      .select()
-      .from(userProgress)
-      .where(
-        and(
-          eq(userProgress.userId, session.userId),
-          eq(userProgress.caseId, caseId)
-        )
-      )
+    const session = await getSession()
+    if (!session) {
+      return NextResponse.json({ authenticated: false }, { status: 401 })
+    }
 
-    const progress: Record<string, any> = {}
-    rows.forEach((row: any) => {
-      try {
-        progress[row.progressKey] = JSON.parse(row.progressValue)
-      } catch {
-        progress[row.progressKey] = row.progressValue
+    let rank = 1
+    let timelineStates = timelines.map(t => {
+      // By default, operation-deadlight is active, others locked
+      const isRecovered = session.recovered.includes(t.id)
+      return {
+        id: t.id,
+        title: t.title,
+        era: t.era,
+        setting: t.setting,
+        status: isRecovered ? 'completed' : t.id === 'operation-deadlight' ? 'active' : 'locked' as const,
+        fragmentRecovered: isRecovered,
       }
     })
 
-    return NextResponse.json({ success: true, progress })
+    if (isDbAvailable) {
+      try {
+        // Fetch rank by sorting leaderboard
+        const lbList = await db
+          .select()
+          .from(leaderboard)
+          .orderBy(desc(leaderboard.fragmentCount), asc(leaderboard.completionTimestamp))
+
+        const userIndex = lbList.findIndex((e: any) => e.userId === session.userId)
+        if (userIndex !== -1) {
+          rank = userIndex + 1
+        }
+
+        // Fetch actual timeline progress from database
+        const progressList = await db
+          .select()
+          .from(timelineProgress)
+          .where(eq(timelineProgress.userId, session.userId))
+
+        timelineStates = timelines.map(t => {
+          const dbProgress = progressList.find((p: any) => p.timelineId === t.id)
+          const isRecovered = session.recovered.includes(t.id)
+          return {
+            id: t.id,
+            title: t.title,
+            era: t.era,
+            setting: t.setting,
+            status: isRecovered ? 'completed' : (dbProgress?.status ?? (t.id === 'operation-deadlight' ? 'active' : 'locked')) as any,
+            fragmentRecovered: isRecovered,
+          }
+        })
+      } catch (e) {
+        console.error('Error fetching DB progress details:', e)
+      }
+    } else {
+      // Demo Mode: calculate rank and unlock other timelines if operation-kennedy is completed
+      if (session.recovered.includes('operation-deadlight')) {
+        timelineStates = timelines.map(t => {
+          const isRecovered = session.recovered.includes(t.id)
+          return {
+            id: t.id,
+            title: t.title,
+            era: t.era,
+            setting: t.setting,
+            status: isRecovered ? 'completed' : 'active' as const, // Unlock others for exploration in Demo
+            fragmentRecovered: isRecovered,
+          }
+        })
+      }
+    }
+
+    return NextResponse.json({
+      authenticated: true,
+      userId: session.userId,
+      name: session.name,
+      email: session.email,
+      integrity: session.integrity,
+      fragmentsRecovered: session.recovered.length,
+      hints: session.hints,
+      rank,
+      timelines: timelineStates,
+    })
   } catch (error) {
-    console.error(`Failed to load progress for case ${caseId}:`, error)
-    return NextResponse.json({ success: false, error: 'Database read error' }, { status: 500 })
+    console.error('Progress API error:', error)
+    return NextResponse.json({ error: 'Server error fetching progress.' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession()
-    if (!session?.userId) {
-      return NextResponse.json({ success: false, error: 'Unauthenticated' }, { status: 401 })
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { caseId, key, value } = await request.json()
-    if (!caseId || !key) {
-      return NextResponse.json({ success: false, error: 'caseId and key are required' }, { status: 400 })
+    const body: unknown = await request.json().catch(() => null)
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
     }
 
-    if (!isDbAvailable) {
-      return NextResponse.json({ success: true }) // Silent success for offline demo mode
+    const { action } = body as Record<string, unknown>
+    if (action === 'use-hint') {
+      if (isDbAvailable) {
+        // Increment hint count in Drizzle
+        const lbRows = await db.select().from(leaderboard).where(eq(leaderboard.userId, session.userId))
+        const lb = lbRows[0]
+        if (lb) {
+          await db.update(leaderboard).set({ hintCount: (lb.hintCount ?? 0) + 1 }).where(eq(leaderboard.userId, session.userId))
+        } else {
+          await db.insert(leaderboard).values({ userId: session.userId, hintCount: 1 })
+        }
+      } else {
+        // Increment hint count in cookies
+        session.hints += 1
+        await saveDemoState(session)
+      }
+      return NextResponse.json({ success: true, hints: session.hints + (isDbAvailable ? 0 : 1) })
     }
 
-    const valString = JSON.stringify(value)
-
-    const existing = await db
-      .select()
-      .from(userProgress)
-      .where(
-        and(
-          eq(userProgress.userId, session.userId),
-          eq(userProgress.caseId, caseId),
-          eq(userProgress.progressKey, key)
-        )
-      )
-
-    if (existing.length > 0) {
-      await db
-        .update(userProgress)
-        .set({
-          progressValue: valString,
-          updatedAt: new Date()
-        })
-        .where(
-          and(
-            eq(userProgress.userId, session.userId),
-            eq(userProgress.caseId, caseId),
-            eq(userProgress.progressKey, key)
-          )
-        )
-    } else {
-      await db.insert(userProgress).values({
-        userId: session.userId,
-        caseId: caseId,
-        progressKey: key,
-        progressValue: valString
-      })
-    }
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   } catch (error) {
-    console.error('Failed to save progress:', error)
-    return NextResponse.json({ success: false, error: 'Database write error' }, { status: 500 })
+    console.error('Progress update API error:', error)
+    return NextResponse.json({ error: 'Server error processing progress action.' }, { status: 500 })
   }
 }
