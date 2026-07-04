@@ -6,10 +6,11 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ActCinematicIntro } from '@/components/ActCinematicIntro'
 import { DialogueBox } from '@/components/DialogueBox'
 import { TransmissionRegistration } from '@/components/TransmissionRegistration'
+import { SecureInbox, TransmissionData } from '@/components/SecureInbox'
 import { RecoveryKeyModal } from '@/components/RecoveryKeyModal'
 import styles from '@/app/operation-deadlight.module.css'
 
-type Phase = 'form' | 'processing' | 'detected' | 'tracing' | 'breached' | 'awaiting'
+type Phase = 'form' | 'processing' | 'detected' | 'tracing' | 'breached' | 'inbox'
 
 const SECTOR_MESSAGES: Record<string, string> = {
   'A-BLOCK': 'Sector A-Block was the first to fall silent.',
@@ -31,12 +32,8 @@ export function Act2Quarantine({ onPuzzleSolved }: { onPuzzleSolved: () => void 
   const [tracingLines, setTracingLines] = useState<string[]>([])
   const progressRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Resend tracking
-  const [resendCooldown, setResendCooldown] = useState(0)
-  const [resendCount, setResendCount] = useState(0)
-  const [resendError, setResendError] = useState('')
-  const [resendSuccess, setResendSuccess] = useState('')
-  const resendTimerRef = useRef<NodeJS.Timeout | null>(null)
+  // Transmission data from the API
+  const [transmission, setTransmission] = useState<TransmissionData | null>(null)
 
   // Admin override modal
   const [showAdminModal, setShowAdminModal] = useState(false)
@@ -62,34 +59,18 @@ export function Act2Quarantine({ onPuzzleSolved }: { onPuzzleSolved: () => void 
 
   // Pulse animation for awaiting phase
   useEffect(() => {
-    if (phase !== 'awaiting') return
+    if (phase !== 'inbox') return
     const interval = setInterval(() => {
       setPulseCount(p => p + 1)
     }, 2000)
     return () => clearInterval(interval)
   }, [phase])
 
-  // Resend cooldown timer
-  useEffect(() => {
-    if (resendCooldown <= 0) return
-    resendTimerRef.current = setInterval(() => {
-      setResendCooldown(prev => {
-        if (prev <= 1) {
-          if (resendTimerRef.current) clearInterval(resendTimerRef.current)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-    return () => {
-      if (resendTimerRef.current) clearInterval(resendTimerRef.current)
-    }
-  }, [resendCooldown])
-
-  const handleRegistrationSuccess = async (name: string, emailVal: string, sectorVal: string) => {
+  const handleRegistrationSuccess = async (name: string, emailVal: string, sectorVal: string, transmissionData: TransmissionData) => {
     setResidentId(name)
     setEmail(emailVal)
     setSector(sectorVal)
+    setTransmission(transmissionData)
 
     // Phase 1: Processing
     setPhase('processing')
@@ -119,8 +100,8 @@ export function Act2Quarantine({ onPuzzleSolved }: { onPuzzleSolved: () => void 
     setPhase('tracing')
     const lines = [
       '> IDENTIFYING NETWORK NODE...',
-      '> SCANNING EMAIL METADATA...',
-      `> EMAIL: ${emailVal}`,
+      '> SCANNING REGISTRATION DATA...',
+      `> AGENT: ${name.toUpperCase()}`,
       '> DEVICE FINGERPRINT: LOGGED',
       '> LOCATION: TRIANGULATING...',
       '> IP ORIGIN: CLASSIFIED',
@@ -137,34 +118,8 @@ export function Act2Quarantine({ onPuzzleSolved }: { onPuzzleSolved: () => void 
     setPhase('breached')
     await delay(6000)
 
-    // Phase 5: Awaiting — user must check inbox
-    setPhase('awaiting')
-    setResendCooldown(60) // Start with cooldown since it was just sent
-  }
-
-  async function handleResend() {
-    if (resendCooldown > 0) return
-    setResendError('')
-    setResendSuccess('')
-
-    try {
-      const res = await fetch('/api/transmissions/resend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      })
-
-      const data = await res.json()
-      if (res.ok && data.success) {
-        setResendCount(c => c + 1)
-        setResendSuccess('Classified transmission re-routed. Check coordinates.')
-        setResendCooldown(60)
-      } else {
-        setResendError(data.message || 'Mainframe rejected resend packet.')
-      }
-    } catch {
-      setResendError('Connection to security grid lost.')
-    }
+    // Phase 5: Show in-app inbox with the puzzle data
+    setPhase('inbox')
   }
 
   async function handleAdminOverride(e: React.FormEvent) {
@@ -283,119 +238,31 @@ export function Act2Quarantine({ onPuzzleSolved }: { onPuzzleSolved: () => void 
             </div>
           )}
 
-          {/* Awaiting Phase — Check Inbox */}
-          {phase === 'awaiting' && (
+          {/* Inbox Phase — In-App Secure Inbox */}
+          {phase === 'inbox' && transmission && (
             <>
-              <div className={styles.crtTerminal}>
-                <div className={styles.crtScanlines} />
-                <div className={styles.terminalOutput}>
-                  <p>&gt; DATA EXPOSURE CONFIRMED</p>
-                  <p>&gt; CLASSIFIED TRANSMISSION DISPATCHED TO: {email}</p>
-                  <p>&gt; STATUS: EN ROUTE</p>
-                  <br />
+              <SecureInbox
+                transmission={transmission}
+                onEnterKey={() => setShowKeyModal(true)}
+              />
 
-                  {/* Pulsing signal indicator */}
-                  <div style={{
-                    textAlign: 'center',
-                    padding: '1.5rem 0',
-                    borderTop: '1px solid #1a4a1a',
-                    borderBottom: '1px solid #1a4a1a',
-                    margin: '1rem 0',
-                  }}>
-                    <p style={{
-                      fontSize: '1.2rem',
-                      color: '#4aff4a',
-                      fontWeight: 'bold',
-                      letterSpacing: '0.15em',
-                      animation: 'pulse 2s ease-in-out infinite',
-                      margin: 0,
-                    }}>
-                      📨 CLASSIFIED TRANSMISSION EN ROUTE {signalDots}
-                    </p>
-                    <p style={{ color: '#8a8070', fontSize: '0.75rem', marginTop: '0.75rem', minHeight: '1.2em' }}>
-                      Check your email inbox for the recovered intelligence.
-                    </p>
-
-                    <p style={{ color: '#8a8070', fontSize: '0.75rem' }}>
-                      Decipher the payload to retrieve the validation key.
-                    </p>
-                    <p style={{ color: '#5a5040', fontSize: '0.65rem', marginTop: '0.5rem' }}>
-                      If you don&apos;t see the email, check your spam/junk folder.
-                    </p>
-                  </div>
-
-                  {/* Enter key button */}
-                  <div style={{ margin: '1.5rem 0', textAlign: 'center' }}>
-                    <button
-                      type="button"
-                      onClick={() => setShowKeyModal(true)}
-                      style={{
-                        background: 'linear-gradient(135deg, #b8862a 0%, #a1701a 100%)',
-                        border: '1px solid #cda75a',
-                        color: '#1a1205',
-                        padding: '0.8rem 1.8rem',
-                        fontFamily: 'var(--font-mono, monospace)',
-                        fontSize: '0.85rem',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        letterSpacing: '0.08em',
-                        boxShadow: '0 0 15px rgba(184, 134, 42, 0.3)',
-                        transition: 'all 0.2s',
-                      }}
-                      onMouseOver={(e) => { e.currentTarget.style.boxShadow = '0 0 25px rgba(184, 134, 42, 0.5)' }}
-                      onMouseOut={(e) => { e.currentTarget.style.boxShadow = '0 0 15px rgba(184, 134, 42, 0.3)' }}
-                    >
-                      [ ENTER RECOVERY KEY ]
-                    </button>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      onClick={handleResend}
-                      disabled={resendCooldown > 0 || resendCount >= 3}
-                      style={{
-                        background: (resendCooldown > 0 || resendCount >= 3) ? '#1a1a1a' : '#1a4a1a',
-                        border: '1px solid #1a4a1a',
-                        color: (resendCooldown > 0 || resendCount >= 3) ? '#555' : '#4aff4a',
-                        padding: '0.5rem 1rem',
-                        fontFamily: 'var(--font-mono, monospace)',
-                        fontSize: '0.7rem',
-                        cursor: (resendCooldown > 0 || resendCount >= 3) ? 'not-allowed' : 'pointer',
-                        fontWeight: 'bold',
-                      }}
-                    >
-                      {resendCount >= 3 ? 'LIMIT REACHED' : resendCooldown > 0 ? `RESEND (${resendCooldown}s)` : 'RESEND TRANSMISSION'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowAdminModal(true)}
-                      style={{
-                        background: 'transparent',
-                        border: '1px solid #3a3020',
-                        color: '#8a8070',
-                        padding: '0.5rem 1rem',
-                        fontFamily: 'var(--font-mono, monospace)',
-                        fontSize: '0.7rem',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      ADMIN OVERRIDE
-                    </button>
-                  </div>
-
-                  {resendSuccess && (
-                    <p style={{ color: '#4aff4a', fontSize: '0.65rem', marginTop: '0.5rem', textAlign: 'center' }}>
-                      ✓ {resendSuccess}
-                    </p>
-                  )}
-                  {resendError && (
-                    <p style={{ color: '#ff4444', fontSize: '0.65rem', marginTop: '0.5rem', textAlign: 'center' }}>
-                      ⚠ {resendError}
-                    </p>
-                  )}
-                </div>
+              {/* Admin Override button */}
+              <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAdminModal(true)}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #3a3020',
+                    color: '#8a8070',
+                    padding: '0.5rem 1rem',
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontSize: '0.7rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ADMIN OVERRIDE
+                </button>
               </div>
 
               {/* Admin Override Modal */}
@@ -421,7 +288,7 @@ export function Act2Quarantine({ onPuzzleSolved }: { onPuzzleSolved: () => void 
                       ADMIN OVERRIDE
                     </h3>
                     <p style={{ color: '#8a8070', fontSize: '0.7rem', lineHeight: 1.4 }}>
-                      If you cannot receive the email, contact event organizers for an override code.
+                      If you cannot decode the transmission, contact event organizers for an override code.
                     </p>
                     <form onSubmit={handleAdminOverride} style={{ marginTop: '1rem' }}>
                       <input

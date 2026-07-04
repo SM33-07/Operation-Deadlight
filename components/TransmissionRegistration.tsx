@@ -4,7 +4,7 @@ import { useState } from 'react'
 import styles from '@/app/operation-deadlight.module.css'
 
 interface TransmissionRegistrationProps {
-  onSuccess: (name: string, email: string, sector: string) => void
+  onSuccess: (name: string, email: string, sector: string, transmission: any) => void
 }
 
 export function TransmissionRegistration({ onSuccess }: TransmissionRegistrationProps) {
@@ -33,8 +33,8 @@ export function TransmissionRegistration({ onSuccess }: TransmissionRegistration
       })
 
       const data = await res.json()
-      if (res.ok && data.success) {
-        onSuccess(name.trim(), email.trim(), sector.trim())
+      if (res.ok && data.success && data.transmission) {
+        onSuccess(name.trim(), email.trim(), sector.trim(), data.transmission)
       } else {
         setError(data.message || 'Verification registration failed.')
       }
